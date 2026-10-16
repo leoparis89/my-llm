@@ -41,3 +41,17 @@ x = token_ids[:4]
 y = token_ids[1:5]
 print("\nx:", x)
 print("y:", y)
+
+# Step 8: slide the window along the whole text, 4 tokens at a time
+window = 4
+inputs = []
+targets = []
+for start in range(0, len(token_ids) - window, window):
+    inputs.append(token_ids[start : start + window])
+    targets.append(token_ids[start + 1 : start + window + 1])
+
+print("\nNumber of examples:", len(inputs))
+for i in range(3):
+    print(f"\nexample {i + 1}:")
+    print("  x:", inputs[i], repr(tokenizer.decode(inputs[i])))
+    print("  y:", targets[i], repr(tokenizer.decode(targets[i])))
