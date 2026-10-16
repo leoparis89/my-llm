@@ -2,6 +2,7 @@ import os
 import urllib.request
 
 import tiktoken
+import torch
 
 # Step 1: get the training text ("The Verdict" by Edith Wharton, public domain)
 file_path = "the-verdict.txt"
@@ -56,3 +57,11 @@ for i in range(3):
     print(f"\nexample {i + 1}:")
     print("  x:", inputs[i], repr(tokenizer.decode(inputs[i])))
     print("  y:", targets[i], repr(tokenizer.decode(targets[i])))
+
+# Step 9: stack the first 8 cards into tensors so they can be processed in parallel
+batch_inputs = torch.tensor(inputs[:8])
+batch_targets = torch.tensor(targets[:8])
+print("\nBatch inputs shape:", batch_inputs.shape)
+print(batch_inputs)
+print("Batch targets shape:", batch_targets.shape)
+print(batch_targets)
