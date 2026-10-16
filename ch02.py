@@ -37,13 +37,7 @@ for token_id in token_ids[:10]:
 # Step 6: decode back to text to check nothing was lost
 print("\nRound trip matches original:", tokenizer.decode(token_ids) == raw_text)
 
-# Step 7: the target is the input shifted by one token
-x = token_ids[:4]
-y = token_ids[1:5]
-print("\nx:", x)
-print("y:", y)
-
-# Step 8: slide the window along the whole text
+# Step 7: slide the window along the whole text (the target is the input shifted by one)
 window = 4  # how many tokens the model sees at once
 stride = 1  # how far the window moves each time
 inputs = []
@@ -58,7 +52,7 @@ for i in range(3):
     print("  x:", inputs[i], repr(tokenizer.decode(inputs[i])))
     print("  y:", targets[i], repr(tokenizer.decode(targets[i])))
 
-# Step 9: stack the first 8 cards into tensors so they can be processed in parallel
+# Step 8: stack the first 8 cards into tensors so they can be processed in parallel
 batch_inputs = torch.tensor(inputs[:8])
 batch_targets = torch.tensor(targets[:8])
 print("\nBatch inputs shape:", batch_inputs.shape)
@@ -66,7 +60,7 @@ print(batch_inputs)
 print("Batch targets shape:", batch_targets.shape)
 print(batch_targets)
 
-# Step 10: embeddings -- a list of 3 random numbers for each token in GPT-2's vocabulary
+# Step 9: embeddings -- a list of 3 random numbers for each token in GPT-2's vocabulary
 torch.manual_seed(123)  # same random numbers every run
 embedding_layer = torch.nn.Embedding(tokenizer.n_vocab, 3)
 
