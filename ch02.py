@@ -65,3 +65,15 @@ print("\nBatch inputs shape:", batch_inputs.shape)
 print(batch_inputs)
 print("Batch targets shape:", batch_targets.shape)
 print(batch_targets)
+
+# Step 10: embeddings -- a list of 3 random numbers for each of GPT-2's 50,257 tokens
+torch.manual_seed(123)  # same random numbers every run
+embedding_layer = torch.nn.Embedding(50257, 3)
+
+# Look up the embeddings for the 4 tokens on card 1
+card = batch_inputs[0]
+card_embeddings = embedding_layer(card)
+print("\nEmbeddings for card 1:")
+for token_id, embedding in zip(card.tolist(), card_embeddings.tolist()):
+    numbers = ", ".join(f"{n:6.2f}" for n in embedding)
+    print(f"{tokenizer.decode([token_id])!r:<10} (ID {token_id:<5}) -> [{numbers}]")
