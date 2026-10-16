@@ -35,3 +35,9 @@ for token_id in token_ids[:10]:
 
 # Step 6: decode back to text to check nothing was lost
 print("\nRound trip matches original:", tokenizer.decode(token_ids) == raw_text)
+
+# Step 7: the target is the input shifted by one token
+x = token_ids[:4]
+y = token_ids[1:5]
+print("\nx:", x)
+print("y:", y)
