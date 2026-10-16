@@ -42,11 +42,12 @@ y = token_ids[1:5]
 print("\nx:", x)
 print("y:", y)
 
-# Step 8: slide the window along the whole text, 4 tokens at a time
-window = 4
+# Step 8: slide the window along the whole text
+window = 4  # how many tokens the model sees at once
+stride = 1  # how far the window moves each time
 inputs = []
 targets = []
-for start in range(0, len(token_ids) - window, window):
+for start in range(0, len(token_ids) - window, stride):
     inputs.append(token_ids[start : start + window])
     targets.append(token_ids[start + 1 : start + window + 1])
 
