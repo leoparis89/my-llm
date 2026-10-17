@@ -4,6 +4,8 @@ import urllib.request
 import tiktoken
 import torch
 
+import hello
+
 # Step 1: get the training text ("The Verdict" by Edith Wharton, public domain)
 file_path = "the-verdict.txt"
 url = (
@@ -89,3 +91,4 @@ for spot, token_id in enumerate(card.tolist()):
     pos = ", ".join(f"{n:5.2f}" for n in spot_embeddings[spot].tolist())
     total = ", ".join(f"{n:5.2f}" for n in card_with_positions[spot].tolist())
     print(f"{tokenizer.decode([token_id])!r:<10} [{word}] + spot {spot + 1} [{pos}] = [{total}]")
+
