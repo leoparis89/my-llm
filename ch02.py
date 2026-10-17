@@ -71,3 +71,16 @@ print("\nEmbeddings for card 1:")
 for token_id, embedding in zip(card.tolist(), card_embeddings.tolist()):
     numbers = ", ".join(f"{n:6.2f}" for n in embedding)
     print(f"{tokenizer.decode([token_id])!r:<10} (ID {token_id:<5}) -> [{numbers}]")
+
+# Step 10: position embeddings -- 3 random numbers for each spot on the card (1st to 4th)
+position_layer = torch.nn.Embedding(window, 3)
+spot_embeddings = position_layer(torch.arange(window))  # spots 0, 1, 2, 3
+
+# Add word numbers + spot numbers, so the same word in a different spot gets different numbers
+card_with_positions = card_embeddings + spot_embeddings
+print("\nCard 1, word + spot = result:")
+for spot, token_id in enumerate(card.tolist()):
+    word = ", ".join(f"{n:5.2f}" for n in card_embeddings[spot].tolist())
+    pos = ", ".join(f"{n:5.2f}" for n in spot_embeddings[spot].tolist())
+    total = ", ".join(f"{n:5.2f}" for n in card_with_positions[spot].tolist())
+    print(f"{tokenizer.decode([token_id])!r:<10} [{word}] + spot {spot + 1} [{pos}] = [{total}]")
