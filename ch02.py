@@ -60,11 +60,12 @@ print(batch_inputs)
 print("Batch targets shape:", batch_targets.shape)
 print(batch_targets)
 
-# Step 9: embeddings -- a list of 3 random numbers for each token in GPT-2's vocabulary
-torch.manual_seed(123)  # same random numbers every run
-embedding_layer = torch.nn.Embedding(tokenizer.n_vocab, 3)
+# Step 9: word embeddings
+# Give every word 3 scores that describe it. They start random; training fixes them later.
+torch.manual_seed(123)  # same random scores every run
+embedding_layer = torch.nn.Embedding(tokenizer.n_vocab, 3)  # 3 scores for each of the 50,257 words
 
-# Look up the embeddings for the 4 tokens on card 1
+# Get the 3 scores for each of the 4 words on card 1
 card = batch_inputs[0]
 card_embeddings = embedding_layer(card)
 print("\nEmbeddings for card 1:")
@@ -73,27 +74,14 @@ for token_id, embedding in zip(card.tolist(), card_embeddings.tolist()):
     print(f"{tokenizer.decode([token_id])!r:<10} (ID {token_id:<5}) -> [{numbers}]")
 
 # Step 10: position embeddings
-#
-# Problem: a word gets the same 3 numbers wherever it is on the card, so
-# "dog bites man" and "man bites dog" would look the same to the model.
-# Fix: give each spot on the card (1st, 2nd, 3rd, 4th) its own 3 numbers too.
+# A word has the same scores wherever it is, so "dog bites man" = "man bites dog".
+# Fix: give each spot on the card its own 3 scores, and add them to the word's scores.
+position_layer = torch.nn.Embedding(window, 3)  # 3 scores for each of the 4 spots
 
-# Make the spot numbers. Same tool as the word embeddings in step 9, but with
-# only `window` entries (4: one per spot) instead of one per word.
-# Each entry is 3 random numbers. Training will adjust them later.
-position_layer = torch.nn.Embedding(window, 3)
-
-# Look up the numbers for every spot on the card.
-# torch.arange(window) makes the list of spot numbers: tensor([0, 1, 2, 3]).
-# Counting starts at 0, so 0 = 1st spot, 1 = 2nd spot, and so on.
-# Passing that list to position_layer looks up each spot, the same way
-# embedding_layer(card) looked up each word ID in step 9.
-# Result: 4 rows (one per spot) of 3 numbers each.
+# Get the 3 scores for each spot. torch.arange(window) is [0, 1, 2, 3] = 1st to 4th spot.
 spot_embeddings = position_layer(torch.arange(window))
 
-# Add each word's 3 numbers to its spot's 3 numbers.
-# Row 1 of card_embeddings (1st word) + row 1 of spot_embeddings (1st spot), and so on.
-# Now the same word in a different spot ends up with different numbers.
+# word scores + spot scores = the same word in a different spot gets different scores
 card_with_positions = card_embeddings + spot_embeddings
 print("\nCard 1, word + spot = result:")
 for spot, token_id in enumerate(card.tolist()):
