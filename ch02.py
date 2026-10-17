@@ -72,11 +72,28 @@ for token_id, embedding in zip(card.tolist(), card_embeddings.tolist()):
     numbers = ", ".join(f"{n:6.2f}" for n in embedding)
     print(f"{tokenizer.decode([token_id])!r:<10} (ID {token_id:<5}) -> [{numbers}]")
 
-# Step 10: position embeddings -- 3 random numbers for each spot on the card (1st to 4th)
-position_layer = torch.nn.Embedding(window, 3)
-spot_embeddings = position_layer(torch.arange(window))  # spots 0, 1, 2, 3
+# Step 10: position embeddings
+#
+# Problem: a word gets the same 3 numbers wherever it is on the card, so
+# "dog bites man" and "man bites dog" would look the same to the model.
+# Fix: give each spot on the card (1st, 2nd, 3rd, 4th) its own 3 numbers too.
 
-# Add word numbers + spot numbers, so the same word in a different spot gets different numbers
+# Make the spot numbers. Same tool as the word embeddings in step 9, but with
+# only `window` entries (4: one per spot) instead of one per word.
+# Each entry is 3 random numbers. Training will adjust them later.
+position_layer = torch.nn.Embedding(window, 3)
+
+# Look up the numbers for every spot on the card.
+# torch.arange(window) makes the list of spot numbers: tensor([0, 1, 2, 3]).
+# Counting starts at 0, so 0 = 1st spot, 1 = 2nd spot, and so on.
+# Passing that list to position_layer looks up each spot, the same way
+# embedding_layer(card) looked up each word ID in step 9.
+# Result: 4 rows (one per spot) of 3 numbers each.
+spot_embeddings = position_layer(torch.arange(window))
+
+# Add each word's 3 numbers to its spot's 3 numbers.
+# Row 1 of card_embeddings (1st word) + row 1 of spot_embeddings (1st spot), and so on.
+# Now the same word in a different spot ends up with different numbers.
 card_with_positions = card_embeddings + spot_embeddings
 print("\nCard 1, word + spot = result:")
 for spot, token_id in enumerate(card.tolist()):
