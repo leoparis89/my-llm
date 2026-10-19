@@ -1,9 +1,13 @@
 import torch
 
-# Chapter 3, simple attention: the book's example sentence, with its hand-picked scores.
-# A real model learns these scores; here they're fixed so the output matches the book.
+# Chapter 3, simple attention: the book's example sentence.
 words = ["Your", "journey", "starts", "with", "one", "step"]
-inputs = torch.tensor(
+
+# Embeddings: 3 numbers describing each word, like card_with_positions at the end of ch02.py.
+# In a real model they'd come from chapter 2's embedding layers. The book makes them up,
+# so the attention math is easy to follow and the output matches the book.
+# (The book calls this variable "inputs", since it's the input to attention.)
+embeddings = torch.tensor(
     [
         [0.43, 0.15, 0.89],  # Your
         [0.55, 0.87, 0.66],  # journey
@@ -14,27 +18,29 @@ inputs = torch.tensor(
     ]
 )
 
-# Part 1: how similar is "journey" to each word? (the book calls these "attention scores")
-# Similarity = dot product. Bigger = more similar.
+# Part 1: how similar is "journey" to each word?
+# Similarity = dot product of the two embeddings. Bigger = more similar.
 # From scratch, torch.dot(a, b) is: sum(x * y for x, y in zip(a, b))
-query = inputs[1]  # "journey"
-attn_scores = torch.tensor([torch.dot(query, word_scores) for word_scores in inputs])
+# (The book calls the word doing the comparing the "query",
+# and these similarities "attention scores".)
+query = embeddings[1]  # "journey"
+similarities = torch.tensor([torch.dot(query, embedding) for embedding in embeddings])
 
-for word, score in zip(words, attn_scores):
-    print(f"journey vs {word:<8} {score:.4f}")
+for word, similarity in zip(words, similarities):
+    print(f"journey vs {word:<8} {similarity:.4f}")
 
-# Part 2: turn the scores into shares that add up to 1 (100%).
-# The book calls these "attention weights".
+# Part 2: turn the similarities into shares that add up to 1 (100%).
+# (The book calls these shares "attention weights".)
 
-# Simple way: divide each score by the total.
-simple_weights = attn_scores / attn_scores.sum()
+# Simple way: divide each similarity by the total.
+simple_shares = similarities / similarities.sum()
 
-# The way actually used: softmax. Same idea, but it makes big scores count even more,
-# and it always gives positive shares, even if some scores are negative.
+# The way actually used: softmax. Same idea, but bigger similarities get an even bigger
+# share, and every share is positive, even if some similarities are negative.
 # From scratch, torch.softmax(x, dim=0) is: torch.exp(x) / torch.exp(x).sum()
-attn_weights = torch.softmax(attn_scores, dim=0)
+shares = torch.softmax(similarities, dim=0)
 
 print("\nShare of each word:  simple   softmax")
-for word, simple, soft in zip(words, simple_weights, attn_weights):
+for word, simple, soft in zip(words, simple_shares, shares):
     print(f"  {word:<8}           {simple:.4f}   {soft:.4f}")
-print(f"  {'total':<8}           {simple_weights.sum():.4f}   {attn_weights.sum():.4f}")
+print(f"  {'total':<8}           {simple_shares.sum():.4f}   {shares.sum():.4f}")
