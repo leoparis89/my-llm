@@ -10,5 +10,7 @@ scores = {
 }
 
 # Similarity = dot product. Bigger = more similar.
+# From scratch, torch.dot(a, b) is: sum(x * y for x, y in zip(a, b))
+# e.g. cat vs dog = 0.9*0.9 + 0.2*0.5 + 0.0*0.0 = 0.91
 for word, word_scores in scores.items():
     print(f"cat vs {word}: {torch.dot(scores['cat'], word_scores):.2f}")
