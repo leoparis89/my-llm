@@ -22,3 +22,19 @@ attn_scores = torch.tensor([torch.dot(query, word_scores) for word_scores in inp
 
 for word, score in zip(words, attn_scores):
     print(f"journey vs {word:<8} {score:.4f}")
+
+# Part 2: turn the scores into shares that add up to 1 (100%).
+# The book calls these "attention weights".
+
+# Simple way: divide each score by the total.
+simple_weights = attn_scores / attn_scores.sum()
+
+# The way actually used: softmax. Same idea, but it makes big scores count even more,
+# and it always gives positive shares, even if some scores are negative.
+# From scratch, torch.softmax(x, dim=0) is: torch.exp(x) / torch.exp(x).sum()
+attn_weights = torch.softmax(attn_scores, dim=0)
+
+print("\nShare of each word:  simple   softmax")
+for word, simple, soft in zip(words, simple_weights, attn_weights):
+    print(f"  {word:<8}           {simple:.4f}   {soft:.4f}")
+print(f"  {'total':<8}           {simple_weights.sum():.4f}   {attn_weights.sum():.4f}")
