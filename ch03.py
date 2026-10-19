@@ -3,9 +3,12 @@ import torch
 # Chapter 3, simple attention: the book's example sentence.
 words = ["Your", "journey", "starts", "with", "one", "step"]
 
-# Embeddings: 3 numbers describing each word, like card_with_positions at the end of ch02.py.
-# In a real model they'd come from chapter 2's embedding layers. The book makes them up,
+# Embeddings: 3 numbers describing each word.
+# In the real model, each row is what chapter 2 produces (card_with_positions in ch02.py):
+#   word -> token ID -> word scores (word embedding) + spot scores (position embedding)
+# The book skips those steps and writes down made-up results directly,
 # so the attention math is easy to follow and the output matches the book.
+# Chapter 4 connects the two: chapter 2's output goes straight into attention.
 # (The book calls this variable "inputs", since it's the input to attention.)
 embeddings = torch.tensor(
     [
