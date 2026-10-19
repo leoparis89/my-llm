@@ -47,3 +47,13 @@ print("\nShare of each word:  simple   softmax")
 for word, simple, soft in zip(words, simple_shares, shares):
     print(f"  {word:<8}           {simple:.4f}   {soft:.4f}")
 print(f"  {'total':<8}           {simple_shares.sum():.4f}   {shares.sum():.4f}")
+
+# Part 3: build a new "journey" by blending all the words' embeddings, using the shares as the recipe.
+# new journey = 14% of Your + 24% of journey + 23% of starts + ... (each word's 3 numbers × its share)
+# (The book calls the result the "context vector".)
+new_journey = torch.zeros(3)
+for share, embedding in zip(shares, embeddings):
+    new_journey += share * embedding
+
+print("\nOld journey:", embeddings[1])
+print("New journey:", new_journey)
