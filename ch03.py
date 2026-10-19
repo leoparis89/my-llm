@@ -1,16 +1,24 @@
 import torch
 
-# Chapter 3, first experiment: how similar are two words?
-# Scores are picked by hand so the result is easy to check. A real model learns them.
-scores = {
-    "the": torch.tensor([0.1, 0.1, 0.1]),
-    "cat": torch.tensor([0.9, 0.2, 0.0]),
-    "dog": torch.tensor([0.9, 0.5, 0.0]),
-    "sat": torch.tensor([0.0, 0.0, 0.9]),
-}
+# Chapter 3, simple attention: the book's example sentence, with its hand-picked scores.
+# A real model learns these scores; here they're fixed so the output matches the book.
+words = ["Your", "journey", "starts", "with", "one", "step"]
+inputs = torch.tensor(
+    [
+        [0.43, 0.15, 0.89],  # Your
+        [0.55, 0.87, 0.66],  # journey
+        [0.57, 0.85, 0.64],  # starts
+        [0.22, 0.58, 0.33],  # with
+        [0.77, 0.25, 0.10],  # one
+        [0.05, 0.80, 0.55],  # step
+    ]
+)
 
+# Part 1: how similar is "journey" to each word? (the book calls these "attention scores")
 # Similarity = dot product. Bigger = more similar.
 # From scratch, torch.dot(a, b) is: sum(x * y for x, y in zip(a, b))
-# e.g. cat vs dog = 0.9*0.9 + 0.2*0.5 + 0.0*0.0 = 0.91
-for word, word_scores in scores.items():
-    print(f"cat vs {word}: {torch.dot(scores['cat'], word_scores):.2f}")
+query = inputs[1]  # "journey"
+attn_scores = torch.tensor([torch.dot(query, word_scores) for word_scores in inputs])
+
+for word, score in zip(words, attn_scores):
+    print(f"journey vs {word:<8} {score:.4f}")
