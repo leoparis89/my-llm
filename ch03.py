@@ -21,27 +21,30 @@ embeddings = torch.tensor(
     ]
 )
 
-# Part 1: how similar is "journey" to each word?
-# Similarity = dot product of the two embeddings. Bigger = more similar.
+# Part 1: attention scores -- how much should "journey" pay attention to each word?
+# Score = dot product of the two embeddings. Bigger = pay more attention.
+# The dot product is only a rough similarity: it also grows with how big the numbers are,
+# so a word compared with itself is not always the highest, and there's no "perfect = 1".
+# (Cosine similarity removes the size effect, but attention uses the plain dot product.)
 # From scratch, torch.dot(a, b) is: sum(x * y for x, y in zip(a, b))
-# (The book calls the word doing the comparing the "query",
-# and these similarities "attention scores".)
+# (The book calls the word doing the comparing the "query".)
 query = embeddings[1]  # "journey"
-similarities = torch.tensor([torch.dot(query, embedding) for embedding in embeddings])
+attention_scores = torch.tensor([torch.dot(query, embedding) for embedding in embeddings])
 
-for word, similarity in zip(words, similarities):
-    print(f"journey vs {word:<8} {similarity:.4f}")
+for word, score in zip(words, attention_scores):
+    print(f"journey vs {word:<8} {score:.4f}")
 
-# Part 2: turn the similarities into shares that add up to 1 (100%).
+# Part 2: turn the attention scores into shares that add up to 1 (100%).
+# The shares are not similarities: they say how much of the blend in part 3 comes from each word.
 # (The book calls these shares "attention weights".)
 
-# Simple way: divide each similarity by the total.
-simple_shares = similarities / similarities.sum()
+# Simple way: divide each score by the total.
+simple_shares = attention_scores / attention_scores.sum()
 
-# The way actually used: softmax. Same idea, but bigger similarities get an even bigger
-# share, and every share is positive, even if some similarities are negative.
+# The way actually used: softmax. Same idea, but bigger scores get an even bigger share,
+# and every share is positive, even if some scores are negative.
 # From scratch, torch.softmax(x, dim=0) is: torch.exp(x) / torch.exp(x).sum()
-shares = torch.softmax(similarities, dim=0)
+shares = torch.softmax(attention_scores, dim=0)
 
 print("\nShare of each word:  simple   softmax")
 for word, simple, soft in zip(words, simple_shares, shares):
@@ -50,8 +53,10 @@ print(f"  {'total':<8}           {simple_shares.sum():.4f}   {shares.sum():.4f}"
 
 # Part 3: build a new "journey" by blending all the words' embeddings, using the shares as the recipe.
 # new journey = 14% of Your + 24% of journey + 23% of starts + ... (each word's 3 numbers × its share)
+# "journey" gets the biggest share, but not 100%: the rest comes from the other words.
+# That's how the new "journey" picks up information from the whole sentence.
 # (The book calls the result the "context vector".)
-new_journey = torch.zeros(3)
+new_journey = torch.zeros(3)  # empty total, filled by the loop below
 for share, embedding in zip(shares, embeddings):
     new_journey += share * embedding
 
