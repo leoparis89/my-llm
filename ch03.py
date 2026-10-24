@@ -64,20 +64,37 @@ print("\nOld journey:", embeddings[1])
 print("New journey:", new_journey)
 
 # Part 4: do parts 1-3 for every word at once, so each word gets its own new version.
-# `@` is matrix multiplication: it does many dot products in one go.
-# `.T` flips rows and columns, so each word's embedding becomes a column to dot with.
+#
+# Sizes are written as (rows x columns).
+# `.T` flips rows and columns: a (6 x 3) grid becomes (3 x 6).
+# `@` is matrix multiplication: each cell of the result = dot product of
+#   a row of the left grid with a column of the right grid.
+#   (a x b) @ (b x c) -> (a x c). The middle sizes must match; the outer sizes give the result.
+#
+# embeddings:    (6 x 3)  6 rows = words, 3 columns = numbers per word
+# embeddings.T:  (3 x 6)  6 columns = words, each word's 3 numbers now going down a column
 
-# 1. Attention scores for every pair of words: a 6 x 6 table.
-#    Row i, column j = dot product of word i with word j. Row 2 is the "journey" scores from part 1.
-all_attention_scores = embeddings @ embeddings.T
+# 1. Attention scores for every pair of words.
+#    (6 x 3) @ (3 x 6) -> (6 x 6)
+#    Row i = word i asking, column j = word j being compared with.
+#    Cell (i, j) = dot product of word i with word j.
+#    Row 2 = the "journey" scores from part 1.
+all_attention_scores = embeddings @ embeddings.T  # (6 x 6)
 
-# 2. Softmax on each row, so each word's shares add up to 1.
-#    dim=1 means "along each row".
-all_shares = torch.softmax(all_attention_scores, dim=1)
+# 2. Softmax on each row, so each word's shares add up to 1. The size doesn't change.
+#    dim=1 means "along each row" (across the columns).
+#    Row i = how much of word i's blend comes from each of the 6 words.
+#    Row 2 = the "journey" shares from part 2.
+all_shares = torch.softmax(all_attention_scores, dim=1)  # (6 x 6)
 
-# 3. Blend: each word's row of shares × all the embeddings, added up.
-#    Row 2 is the same new "journey" as in part 3.
-all_new_embeddings = all_shares @ embeddings
+# 3. Blend.
+#    (6 x 6) @ (6 x 3) -> (6 x 3)
+#    Cell (i, k) = row i of all_shares (word i's 6 shares)
+#                  dotted with column k of embeddings (the k-th number of all 6 words)
+#                = share_1 * word1[k] + share_2 * word2[k] + ... + share_6 * word6[k]
+#    That's exactly the loop in part 3, for every word and every number at once.
+#    Row i = new version of word i (3 numbers). Row 2 = the new "journey" from part 3.
+all_new_embeddings = all_shares @ embeddings  # (6 x 3)
 
 header = "".join(f"{w:>9}" for w in words)
 print("\nAttention scores (row = word doing the comparing):")
