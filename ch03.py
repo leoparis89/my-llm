@@ -114,8 +114,12 @@ for word, old, new in zip(words, embeddings, all_new_embeddings):
 print("\nRow 2 matches part 3:", torch.allclose(all_new_embeddings[1], new_journey))
 
 # Part 5: filters -- the part of attention that can learn.
-# Until now each word used its one embedding for 3 jobs. Now each word passes through
-# 3 filters first, giving it a separate version for each job:
+# Until now each word used its one embedding for 3 jobs:
+#   1. Asking: in part 1, journey's embedding was dotted with the others to find what to pay attention to.
+#   2. Being compared with: in part 1, every word's embedding was what journey's got dotted with.
+#   3. Being blended in: in part 3, every word's embedding was mixed in using the shares.
+# One set of 3 numbers has to do all 3 jobs, and none of it can be learned.
+# Now each word passes through 3 filters first, giving it a separate version for each job:
 #   filter A -> "what I'm looking for"     (book: query)
 #   filter B -> "what I can be matched on" (book: key)
 #   filter C -> "what I add to the blend"  (book: value) -- used in the next step
