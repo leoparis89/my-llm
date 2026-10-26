@@ -114,17 +114,13 @@ for word, old, new in zip(words, embeddings, all_new_embeddings):
 print("\nRow 2 matches part 3:", torch.allclose(all_new_embeddings[1], new_journey))
 
 # Part 5: filters -- the part of attention that can learn.
-# Until now, the same embedding was used in 3 different places. Example with journey and starts:
-#   part 1:  score = dot(journey, starts)   <- journey on the left side, starts on the right side
-#   part 3:  blend += 23% * starts          <- starts as the thing being mixed in
-# So every embedding plays 3 roles: left side of a dot, right side of a dot, thing mixed in.
-# One set of 3 numbers has to do all 3, and none of it can be learned.
-# Now each word passes through 3 filters first, giving it a separate version for each role:
-#   filter A -> left side of the dot   = "what I'm looking for"     (book: query)
-#   filter B -> right side of the dot  = "what I can be matched on" (book: key)
-#   filter C -> the thing mixed in     = "what I add to the blend"  (book: value) -- used in the next step
-# Each filter is a (3 x 2) grid: it turns a word's 3 numbers into 2 numbers.
-# The filters are random for now. Training will adjust them; that's how attention learns.
+# Parts 1-4 used the raw embeddings, so nothing could be learned.
+# Now the embeddings go through 3 filters first:
+#   filter A -> for the word that compares      (book: query)
+#   filter B -> for the words it's compared to  (book: key)
+#   filter C -> for the words that get blended  (book: value) -- used in the next step
+# Each filter is a (3 x 2) grid of numbers: it turns a word's 3 numbers into 2.
+# Random for now; training adjusts them.
 torch.manual_seed(123)  # the book's seed, so we get the book's numbers
 filter_looking_for = torch.rand(3, 2)  # (3 x 2)  book: W_query
 filter_matched_on = torch.rand(3, 2)  # (3 x 2)  book: W_key
