@@ -117,8 +117,10 @@ for word, old, new in zip(words, embeddings, all_new_embeddings):
 print("\nRow 2 matches part 3:", torch.allclose(all_new_embeddings[1], new_journey))
 
 # Part 5: filters -- the part of attention that can learn.
-# Parts 1-4 used the raw embeddings, so nothing could be learned.
-# Now the embeddings go through 3 filters first:
+# Parts 1-4 compared and blended the `embeddings` at the top of the file exactly as written
+# (e.g. journey = [0.55, 0.87, 0.66]). Those numbers never change, so there was nothing
+# training could adjust to make attention better.
+# Now each word's 3 numbers first go through 3 filters, and attention uses what comes out:
 #   filter A -> for the word that compares      (the book calls its output the "query")
 #   filter B -> for the words it's compared to  (the book calls its output the "keys")
 #   filter C -> for the words that get blended  (the book calls its output the "values") -- used in the next step
