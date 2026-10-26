@@ -1,6 +1,9 @@
 import torch
 
-# Chapter 3, simple attention: the book's example sentence.
+# Chapter 3, simple attention.
+# "The book" in these comments = Sebastian Raschka's "Build a Large Language Model (From Scratch)",
+# which this code follows. Where I use a plainer name than the book, the comment gives the book's name
+# so you can find it there. The example sentence and numbers below are the book's.
 words = ["Your", "journey", "starts", "with", "one", "step"]
 
 # Embeddings: 3 numbers describing each word.
@@ -116,23 +119,23 @@ print("\nRow 2 matches part 3:", torch.allclose(all_new_embeddings[1], new_journ
 # Part 5: filters -- the part of attention that can learn.
 # Parts 1-4 used the raw embeddings, so nothing could be learned.
 # Now the embeddings go through 3 filters first:
-#   filter A -> for the word that compares      (book: query)
-#   filter B -> for the words it's compared to  (book: key)
-#   filter C -> for the words that get blended  (book: value) -- used in the next step
+#   filter A -> for the word that compares      (the book calls its output the "query")
+#   filter B -> for the words it's compared to  (the book calls its output the "keys")
+#   filter C -> for the words that get blended  (the book calls its output the "values") -- used in the next step
 # Each filter is a (3 x 2) grid of numbers: it turns a word's 3 numbers into 2.
 # Random for now; training adjusts them.
 torch.manual_seed(123)  # the book's seed, so we get the book's numbers
-filter_looking_for = torch.rand(3, 2)  # (3 x 2)  book: W_query
-filter_matched_on = torch.rand(3, 2)  # (3 x 2)  book: W_key
-filter_adds = torch.rand(3, 2)  # (3 x 2)  book: W_value
+filter_looking_for = torch.rand(3, 2)  # (3 x 2)  filter A; the book calls it W_query
+filter_matched_on = torch.rand(3, 2)  # (3 x 2)  filter B; the book calls it W_key
+filter_adds = torch.rand(3, 2)  # (3 x 2)  filter C; the book calls it W_value
 
 # Pass "journey" through filter A.
 # (3) @ (3 x 2) -> (2): journey's 3 numbers become 2 numbers.
-journey_looking_for = embeddings[1] @ filter_looking_for  # (2)  book: query_2
+journey_looking_for = embeddings[1] @ filter_looking_for  # (2)  the book calls it query_2
 
 # Pass every word through filter B.
 # (6 x 3) @ (3 x 2) -> (6 x 2): each of the 6 words' 3 numbers become 2 numbers.
-all_matched_on = embeddings @ filter_matched_on  # (6 x 2)  book: keys
+all_matched_on = embeddings @ filter_matched_on  # (6 x 2)  the book calls it keys
 
 # Attention scores, same idea as part 1, but comparing the filtered versions:
 # journey's "looking for" dotted with each word's "matched on".
