@@ -112,3 +112,33 @@ for word, old, new in zip(words, embeddings, all_new_embeddings):
     print(f"  {word:<8} old {[round(v, 4) for v in old.tolist()]}  ->  new {[round(v, 4) for v in new.tolist()]}")
 
 print("\nRow 2 matches part 3:", torch.allclose(all_new_embeddings[1], new_journey))
+
+# Part 5: filters -- the part of attention that can learn.
+# Until now each word used its one embedding for 3 jobs. Now each word passes through
+# 3 filters first, giving it a separate version for each job:
+#   filter A -> "what I'm looking for"     (book: query)
+#   filter B -> "what I can be matched on" (book: key)
+#   filter C -> "what I add to the blend"  (book: value) -- used in the next step
+# Each filter is a (3 x 2) grid: it turns a word's 3 numbers into 2 numbers.
+# The filters are random for now. Training will adjust them; that's how attention learns.
+torch.manual_seed(123)  # the book's seed, so we get the book's numbers
+filter_looking_for = torch.rand(3, 2)  # (3 x 2)  book: W_query
+filter_matched_on = torch.rand(3, 2)  # (3 x 2)  book: W_key
+filter_adds = torch.rand(3, 2)  # (3 x 2)  book: W_value
+
+# Pass "journey" through filter A.
+# (3) @ (3 x 2) -> (2): journey's 3 numbers become 2 numbers.
+journey_looking_for = embeddings[1] @ filter_looking_for  # (2)  book: query_2
+
+# Pass every word through filter B.
+# (6 x 3) @ (3 x 2) -> (6 x 2): each of the 6 words' 3 numbers become 2 numbers.
+all_matched_on = embeddings @ filter_matched_on  # (6 x 2)  book: keys
+
+# Attention scores, same idea as part 1, but comparing the filtered versions:
+# journey's "looking for" dotted with each word's "matched on".
+# (2) @ (2 x 6) -> (6): one score per word.
+filtered_scores = journey_looking_for @ all_matched_on.T  # (6)
+
+print("\nWith filters, journey's attention scores:")
+for word, score in zip(words, filtered_scores):
+    print(f"journey vs {word:<8} {score:.4f}")
