@@ -124,8 +124,12 @@ print("\nRow 2 matches part 3:", torch.allclose(all_new_embeddings[1], new_journ
 #   filter A -> for the word that compares      (the book calls its output the "query")
 #   filter B -> for the words it's compared to  (the book calls its output the "keys")
 #   filter C -> for the words that get blended  (the book calls its output the "values") -- used in the next step
-# Each filter is a (3 x 2) grid of numbers: it turns a word's 3 numbers into 2.
-# Random for now; training adjusts them.
+# Each filter is a (3 x 2) grid of numbers: it takes a word's 3 numbers and gives back 2 numbers.
+# Each word goes through all 3 filters, so it ends up with 3 separate lists of 2 numbers:
+#   journey [0.55, 0.87, 0.66] -> filter A -> [0.43, 1.46]
+#                              -> filter B -> [0.44, 1.14]
+#                              -> filter C -> [0.40, 1.00]
+# The filters are random for now; training adjusts them.
 torch.manual_seed(123)  # the book's seed, so we get the book's numbers
 filter_looking_for = torch.rand(3, 2)  # (3 x 2)  filter A; the book calls it W_query
 filter_matched_on = torch.rand(3, 2)  # (3 x 2)  filter B; the book calls it W_key
