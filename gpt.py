@@ -28,8 +28,11 @@ class GPTModel(nn.Module):
         self.tok_emb = nn.Embedding(cfg["vocab_size"], cfg["emb_dim"])
         # Position table: one row of 768 numbers per spot (same as position_layer in ch02.py)
         self.pos_emb = nn.Embedding(cfg["context_length"], cfg["emb_dim"])
-        # Filter that turns each token's 768 numbers into 50,257 numbers:
-        # one per token in the list, saying how strongly the model thinks it comes next
+        # Filter (a matrix, like the filters in ch03.py) that turns each token's 768 numbers
+        # into 50,257 numbers: one per token in the list, saying how strongly the model thinks it comes next.
+        #   x (4 tokens x 768) @ out_head (768 x 50,257) -> logits (4 tokens x 50,257)
+        # nn.Linear creates the random (768 x 50,257) matrix and does the @ when called.
+        # bias=False: just the @, no extra numbers added afterwards.
         self.out_head = nn.Linear(cfg["emb_dim"], cfg["vocab_size"], bias=False)
 
     def forward(self, in_idx):  # in_idx = the token IDs, one row per card
