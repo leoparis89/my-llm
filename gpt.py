@@ -82,13 +82,20 @@ in_idx = torch.tensor([tokenizer.encode("Your journey starts with")])
 # (See __call__ and _call_impl in .venv/lib/python3.12/site-packages/torch/nn/modules/module.py)
 # logits: for each of the 4 words on the card, a score for each of the 50,257 candidates
 # as the next word. Big score = the model thinks that candidate is likely to come next.
+# A score's position in the list of 50,257 is the candidate's token ID, so decode turns it into the word.
+# Example, the scores after "with" (card 0, spot 3):
+#   logits[0, 3, 262]  = -0.48   tokenizer.decode([262])  = ' the'
+#   logits[0, 3, 530]  = -0.70   tokenizer.decode([530])  = ' one'
+#   logits[0, 3, 6549] =  2.62   tokenizer.decode([6549]) = ' surve'   <- biggest of all 50,257
 logits = model(in_idx)  # (1 card x 4 tokens x 50,257)
 print("Output size:", tuple(logits.shape))
 
-# The guess at each spot = the token with the biggest of its 50,257 numbers.
-# argmax gives the position of the biggest number, which is that token's ID.
+# The guess at each spot = the candidate with the biggest score.
+# argmax gives the POSITION of the biggest score (not the score itself) = that candidate's token ID.
+#   after "with": biggest score is 2.62, at position 6549 -> guess = 6549 = ' surve'
 # dim=-1 means "look along the last size" (the 50,257), so we get one ID per spot: size (1 x 4).
 # [0] takes the first (and only) card: size (4).
+#   guesses = [29817, 9209, 39683, 6549] = ['VIS', ' speaks', 'ß', ' surve']
 guesses = logits.argmax(dim=-1)[0]
 
 # Print what the model has seen so far at each spot, and its guess for the next token.
