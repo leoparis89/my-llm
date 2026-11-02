@@ -98,7 +98,16 @@ print("Output size:", tuple(logits.shape))
 #   guesses = [29817, 9209, 39683, 6549] = ['VIS', ' speaks', 'ß', ' surve']
 guesses = logits.argmax(dim=-1)[0]
 
-# Print what the model has seen so far at each spot, and its guess for the next token.
-for spot, guess in enumerate(guesses.tolist()):  # spot = 0, 1, 2, 3
-    seen = tokenizer.decode(in_idx[0, : spot + 1].tolist())  # the tokens up to and including this spot
-    print(f"after {seen!r:<28} guess {tokenizer.decode([guess])!r}")
+# Print, for each word on the card, the text read so far and the model's guess for the next word:
+#   after 'Your' -> guess 'VIS'
+#   after 'Your journey' -> guess ' speaks'
+#   after 'Your journey starts' -> guess 'ß'
+#   after 'Your journey starts with' -> guess ' surve'
+card_ids = in_idx[0].tolist()  # the card's token IDs: [7120, 7002, 4940, 351]
+guess_ids = guesses.tolist()  # the model's guesses:  [29817, 9209, 39683, 6549]
+text_so_far = ""
+for spot in range(4):  # spot = 0, 1, 2, 3
+    word = tokenizer.decode([card_ids[spot]])  # spot 1: 7002 -> ' journey'
+    text_so_far = text_so_far + word  # spot 1: 'Your' + ' journey' -> 'Your journey'
+    guess = tokenizer.decode([guess_ids[spot]])  # spot 1: 9209 -> ' speaks'
+    print(f"after '{text_so_far}' -> guess '{guess}'")
