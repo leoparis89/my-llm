@@ -57,17 +57,34 @@ class GPTModel(nn.Module):
         return logits
 
 
-torch.manual_seed(123)
-model = GPTModel(GPT_CONFIG_TINY)
-tokenizer = tiktoken.get_encoding("gpt2")
+torch.manual_seed(123)  # same random numbers every run
 
-# One card of 4 tokens. The extra [ ] makes it a batch of 1 card, which is what the model expects.
+# Create the machine: an object (instance) of the GPTModel class.
+# This runs __init__ above with cfg = GPT_CONFIG_TINY, which builds tok_emb, pos_emb and out_head
+# filled with random numbers.
+model = GPTModel(GPT_CONFIG_TINY)
+
+tokenizer = tiktoken.get_encoding("gpt2")  # GPT-2's tokenizer, same as ch02.py
+
+# Text -> token IDs: [7120, 7002, 4940, 351]
+# The extra [ ] around it makes a batch of 1 card: [[7120, 7002, 4940, 351]], size (1 x 4).
+# The model always expects a batch of cards, even if there's only one.
 in_idx = torch.tensor([tokenizer.encode("Your journey starts with")])
+
+# Run the machine on the card.
+# model is an object, but it can be called like a function: model(in_idx) runs forward(in_idx) above.
+# That's built into nn.Module: its __call__ method calls forward.
+# (See __call__ and _call_impl in .venv/lib/python3.12/site-packages/torch/nn/modules/module.py)
 logits = model(in_idx)  # (1 card x 4 tokens x 50,257)
 print("Output size:", tuple(logits.shape))
 
-# For each spot, the guess = the token with the biggest number (argmax).
+# The guess at each spot = the token with the biggest of its 50,257 numbers.
+# argmax gives the position of the biggest number, which is that token's ID.
+# dim=-1 means "look along the last size" (the 50,257), so we get one ID per spot: size (1 x 4).
+# [0] takes the first (and only) card: size (4).
 guesses = logits.argmax(dim=-1)[0]
-for spot, guess in enumerate(guesses.tolist()):
-    seen = tokenizer.decode(in_idx[0, : spot + 1].tolist())
+
+# Print what the model has seen so far at each spot, and its guess for the next token.
+for spot, guess in enumerate(guesses.tolist()):  # spot = 0, 1, 2, 3
+    seen = tokenizer.decode(in_idx[0, : spot + 1].tolist())  # the tokens up to and including this spot
     print(f"after {seen!r:<28} guess {tokenizer.decode([guess])!r}")
