@@ -40,11 +40,16 @@ class GPTModel(nn.Module):
         self.tok_emb = nn.Embedding(cfg["vocab_size"], cfg["emb_dim"])
         # Position table: (4 x 3), one row of 3 numbers per spot (same as position_layer in ch02.py)
         self.pos_emb = nn.Embedding(cfg["context_length"], cfg["emb_dim"])
-        # Filter (a matrix, like the filters in ch03.py) that turns each token's 3 numbers
-        # into 50,257 numbers: one per token in the list, saying how strongly the model thinks it comes next.
-        #   x (4 tokens x 3) @ out_head (3 x 50,257) -> logits (4 tokens x 50,257)
-        # nn.Linear creates the random (3 x 50,257) matrix and does the @ when called.
-        # bias=False: just the @, no extra numbers added afterwards.
+        # Guess table: (50,257 x 3), one row of 3 numbers per token in GPT-2's list. Random at first.
+        # To score how likely a token in the list comes next: dot product of our token's 3 numbers
+        # with that token's row (same as the attention scores in ch03.py). Example, after "with":
+        #   with [1.94, -1.26, -1.43] . ' surve' row [0.58, -0.57, -0.54] =  2.62
+        #   with [1.94, -1.26, -1.43] . ' one'   row [-0.46, 0.49, -0.56] = -0.70
+        # Done for all 50,257 rows -> 50,257 numbers per token on the card (the logits). Biggest = the guess.
+        # Training adjusts the rows so the right next word gets the biggest number.
+        # nn.Linear creates the random table and does all the dot products at once with @:
+        #   x (4 tokens x 3) @ table flipped (3 x 50,257) -> logits (4 tokens x 50,257)
+        # bias=False: just the dot products, no extra number added afterwards.
         self.out_head = nn.Linear(cfg["emb_dim"], cfg["vocab_size"], bias=False)
 
     def forward(self, in_idx):  # in_idx = the token IDs, one row per card
