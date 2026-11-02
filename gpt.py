@@ -80,6 +80,8 @@ in_idx = torch.tensor([tokenizer.encode("Your journey starts with")])
 # model is an object, but it can be called like a function: model(in_idx) runs forward(in_idx) above.
 # That's built into nn.Module: its __call__ method calls forward.
 # (See __call__ and _call_impl in .venv/lib/python3.12/site-packages/torch/nn/modules/module.py)
+# logits: for each of the 4 words on the card, a score for each of the 50,257 candidates
+# as the next word. Big score = the model thinks that candidate is likely to come next.
 logits = model(in_idx)  # (1 card x 4 tokens x 50,257)
 print("Output size:", tuple(logits.shape))
 
