@@ -145,22 +145,20 @@ print("Output size:", tuple(logits.shape))
 #   guesses = [[29817, 9209, 39683, 6549]] = ['VIS', ' speaks', 'ß', ' surve']
 guesses = logits.argmax(dim=-1)
 
-# Print, for each word on the card, the text read so far and the model's guess for the next word:
+# Print, for each word on the card, the model's guess for the next word:
 #   after 'Your' -> guess 'VIS'
-#   after 'Your journey' -> guess ' speaks'
-#   after 'Your journey starts' -> guess 'ß'
-#   after 'Your journey starts with' -> guess ' surve'
+#   after ' journey' -> guess ' speaks'
+#   after ' starts' -> guess 'ß'
+#   after ' with' -> guess ' surve'
 #
 # First, get both as plain lists of numbers:
 #   [0]       takes row 0 out of the grid (our first and only card):
 #               [[7120, 7002, 4940, 351]]  ->  [7120, 7002, 4940, 351]
 #   .tolist() turns PyTorch's tensor into a normal Python list, which tokenizer.decode can read:
 #               tensor([7120, 7002, 4940, 351])  ->  [7120, 7002, 4940, 351]
-card_ids = token_ids[0].tolist()  # the card's words:    [7120, 7002, 4940, 351]
-guess_ids = guesses[0].tolist()  # the model's guesses: [29817, 9209, 39683, 6549]
-text_so_far = ""
-for spot in range(4):  # spot = 0, 1, 2, 3
-    word = tokenizer.decode([card_ids[spot]])  # spot 1: 7002 -> ' journey'
-    text_so_far = text_so_far + word  # spot 1: 'Your' + ' journey' -> 'Your journey'
-    guess = tokenizer.decode([guess_ids[spot]])  # spot 1: 9209 -> ' speaks'
-    print(f"after '{text_so_far}' -> guess '{guess}'")
+first_card = token_ids[0].tolist()  # the card's words:    [7120, 7002, 4940, 351]
+first_card_guesses = guesses[0].tolist()  # the model's guesses: [29817, 9209, 39683, 6549]
+for i in range(4):  # i = 0, 1, 2, 3
+    word = tokenizer.decode([first_card[i]])  # i = 1: 7002 -> ' journey'
+    guess = tokenizer.decode([first_card_guesses[i]])  # i = 1: 9209 -> ' speaks'
+    print(f"after '{word}' -> guess '{guess}'")
