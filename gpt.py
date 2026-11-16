@@ -52,8 +52,14 @@ class GPTModel(nn.Module):
         # bias=False: just the dot products, no extra number added afterwards.
         self.out_head = nn.Linear(cfg["emb_dim"], cfg["vocab_size"], bias=False)
 
-    # Example card: "Your journey starts with" -> token_ids = [[7120, 7002, 4940, 351]]
-    def forward(self, token_ids):  # the token IDs, one row per card (the book calls it in_idx)
+    # token_ids = a grid of token IDs: one row per card, 4 IDs per row. (The book calls it in_idx.)
+    # You can feed 1 card or many cards at once; each row is handled the same way.
+    #   1 card (what we do below):
+    #     [[7120, 7002, 4940, 351]]                "Your journey starts with"
+    #   2 cards (what training will do, with many more):
+    #     [[7120, 7002, 4940, 351],                "Your journey starts with"
+    #      [7002, 4940,  351, 530]]                "journey starts with one"
+    def forward(self, token_ids):
         # How many cards, and how many words per card: here 1 card of 4 words.
         batch_size, seq_len = token_ids.shape  # batch_size = 1, seq_len = 4
 
