@@ -40,16 +40,15 @@ class GPTModel(nn.Module):
         self.tok_emb = nn.Embedding(cfg["vocab_size"], cfg["emb_dim"])
         # Position table: (4 x 3), one row of 3 numbers per spot (same as position_layer in ch02.py)
         self.pos_emb = nn.Embedding(cfg["context_length"], cfg["emb_dim"])
-        # Guess table: (50,257 x 3), one row of 3 numbers per token in GPT-2's list. Random at first.
-        # To score how likely a token in the list comes next: dot product of our token's 3 numbers
-        # with that token's row (same as the attention scores in ch03.py). Example, after "with":
-        #   with [1.94, -1.26, -1.43] . ' surve' row [0.58, -0.57, -0.54] =  2.62
-        #   with [1.94, -1.26, -1.43] . ' one'   row [-0.46, 0.49, -0.56] = -0.70
-        # Done for all 50,257 rows -> 50,257 numbers per token on the card (the logits). Biggest = the guess.
-        # Training adjusts the rows so the right next word gets the biggest number.
-        # nn.Linear creates the random table and does all the dot products at once with @:
-        #   x (4 tokens x 3) @ table flipped (3 x 50,257) -> logits (4 tokens x 50,257)
-        # bias=False: just the dot products, no extra number added afterwards.
+        # Dictionary table for guessing: 3 random numbers for each of the 50,257 dictionary words.
+        #   size (3 x 50,257)
+        # It's a separate table from tok_emb above: same size, different numbers, different job.
+        #   tok_emb  gives each word ON THE CARD its 3 numbers (at the start)
+        #   out_head gives each DICTIONARY WORD 3 numbers, used to score it as the next word (at the end)
+        # How it's used is explained in forward, at the logits line.
+        # nn.Linear(3, 50257) creates this table and, when called, does the multiplying for us.
+        # bias=False: just the multiplying, no extra number added afterwards.
+        # Training adjusts these numbers so the right next word gets the highest score.
         self.out_head = nn.Linear(cfg["emb_dim"], cfg["vocab_size"], bias=False)
 
     # token_ids = a grid of token IDs: one row per card, 4 IDs per row. (The book calls it in_idx.)
@@ -88,10 +87,25 @@ class GPTModel(nn.Module):
 
         # Attention and the rest of GPT-2 will go here, in later steps.
 
-        # For each word, a note for each of the 50,257 dictionary words as the next word
-        # (dot product with that word's row in out_head). Example, after "with":
-        #   ' the' -0.48   ' one' -0.70   ' surve' 2.62 (highest)
-        logits = self.out_head(x)  # (4 words x 50,257)
+        # Score every dictionary word as the next word.
+        # For each of our 4 words, multiply its 3 numbers (from x above)
+        # with the 3 numbers of each of the 50,257 dictionary words (from out_head).
+        # Each multiplication gives one score: how likely that dictionary word comes next.
+        #
+        # Example: how likely is ' one' after "with"?
+        #   with's 3 numbers (from x):          [ 1.94, -1.26, -1.43]
+        #   ' one''s 3 numbers (from out_head): [-0.46,  0.49, -0.56]
+        #   multiply pair by pair and add:  1.94 x -0.46  +  -1.26 x 0.49  +  -1.43 x -0.56  =  -0.70
+        #   -> score of ' one' after "with" = -0.70
+        #
+        # Same for all 50,257 dictionary words -> 50,257 scores for "with":
+        #   ' the' -0.48   ' one' -0.70   ' surve' 2.62 (highest = the guess)   ...
+        # Same for Your, journey and starts -> 50,257 scores each.
+        #
+        # Sizes: x (4 words x 3) times out_head (3 x 50,257) -> logits (4 words x 50,257)
+        # (With more cards, the same happens for every card: (cards x 4 words x 50,257).)
+        # "logits" is the official name for these scores.
+        logits = self.out_head(x)
         return logits
 
 
