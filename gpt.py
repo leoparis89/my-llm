@@ -140,18 +140,24 @@ print("Output size:", tuple(logits.shape))
 # The guess at each spot = the candidate with the biggest score.
 # argmax gives the POSITION of the biggest score (not the score itself) = that candidate's token ID.
 #   after "with": biggest score is 2.62, at position 6549 -> guess = 6549 = ' surve'
-# dim=-1 means "look along the last size" (the 50,257), so we get one ID per spot: size (1 x 4).
-# [0] takes the first (and only) card: size (4).
-#   guesses = [29817, 9209, 39683, 6549] = ['VIS', ' speaks', 'ß', ' surve']
-guesses = logits.argmax(dim=-1)[0]
+# dim=-1 means "look along the last size" (the 50,257), so we get one ID per word.
+# Like token_ids, it's a grid with one row per card. We have 1 card, so 1 row:
+#   guesses = [[29817, 9209, 39683, 6549]] = ['VIS', ' speaks', 'ß', ' surve']
+guesses = logits.argmax(dim=-1)
 
 # Print, for each word on the card, the text read so far and the model's guess for the next word:
 #   after 'Your' -> guess 'VIS'
 #   after 'Your journey' -> guess ' speaks'
 #   after 'Your journey starts' -> guess 'ß'
 #   after 'Your journey starts with' -> guess ' surve'
-card_ids = token_ids[0].tolist()  # the card's token IDs: [7120, 7002, 4940, 351]
-guess_ids = guesses.tolist()  # the model's guesses:  [29817, 9209, 39683, 6549]
+#
+# First, get both as plain lists of numbers:
+#   [0]       takes row 0 out of the grid (our first and only card):
+#               [[7120, 7002, 4940, 351]]  ->  [7120, 7002, 4940, 351]
+#   .tolist() turns PyTorch's tensor into a normal Python list, which tokenizer.decode can read:
+#               tensor([7120, 7002, 4940, 351])  ->  [7120, 7002, 4940, 351]
+card_ids = token_ids[0].tolist()  # the card's words:    [7120, 7002, 4940, 351]
+guess_ids = guesses[0].tolist()  # the model's guesses: [29817, 9209, 39683, 6549]
 text_so_far = ""
 for spot in range(4):  # spot = 0, 1, 2, 3
     word = tokenizer.decode([card_ids[spot]])  # spot 1: 7002 -> ' journey'
