@@ -31,7 +31,7 @@ GPT_CONFIG_124M = {
 
 # A nn.Module is PyTorch's box for a model:
 #   __init__ creates the tables and filters (all random at first, adjusted by training)
-#   forward  is what happens when you call model(in_idx)
+#   forward  is what happens when you call model(token_ids)
 # Sizes in the comments below are for GPT_CONFIG_TINY.
 class GPTModel(nn.Module):
     def __init__(self, cfg):
@@ -52,26 +52,26 @@ class GPTModel(nn.Module):
         # bias=False: just the dot products, no extra number added afterwards.
         self.out_head = nn.Linear(cfg["emb_dim"], cfg["vocab_size"], bias=False)
 
-    # Example card: "Your journey starts with" -> in_idx = [[7120, 7002, 4940, 351]]
-    def forward(self, in_idx):  # in_idx = the token IDs, one row per card
+    # Example card: "Your journey starts with" -> token_ids = [[7120, 7002, 4940, 351]]
+    def forward(self, token_ids):  # the token IDs, one row per card (the book calls it in_idx)
         # How many cards, and how many words per card: here 1 card of 4 words.
-        batch_size, seq_len = in_idx.shape  # batch_size = 1, seq_len = 4
+        batch_size, seq_len = token_ids.shape  # batch_size = 1, seq_len = 4
 
         # Each word's ID -> its row in the word table (3 numbers per word):
         #   Your    (7120) -> [ 0.67,  0.25, -1.66]
         #   journey (7002) -> [ 1.05,  0.36, -0.70]
         #   starts  (4940) -> [ 2.53,  0.34, -0.25]
         #   with    (351)  -> [ 0.32, -0.85, -1.47]
-        tok_embeds = self.tok_emb(in_idx)
+        tok_embeds = self.tok_emb(token_ids)
 
         # Each spot on the card -> its row in the position table (3 numbers per spot).
         # torch.arange(4) = [0, 1, 2, 3], one number per spot.
-        # (device=... just keeps the numbers on the same chip as in_idx: CPU or GPU.)
+        # (device=... just keeps the numbers on the same chip as token_ids: CPU or GPU.)
         #   spot 0 -> [-1.99,  0.45, -0.71]
         #   spot 1 -> [-0.05,  0.03,  0.30]
         #   spot 2 -> [ 0.36, -0.28, -0.19]
         #   spot 3 -> [ 1.62, -0.40,  0.04]
-        pos_embeds = self.pos_emb(torch.arange(seq_len, device=in_idx.device))
+        pos_embeds = self.pos_emb(torch.arange(seq_len, device=token_ids.device))
 
         # Add them: word numbers + spot numbers, so the same word in another spot gets different numbers.
         #   Your    [ 0.67,  0.25, -1.66] + spot 0 [-1.99,  0.45, -0.71] = [-1.32,  0.70, -2.37]
@@ -101,10 +101,10 @@ tokenizer = tiktoken.get_encoding("gpt2")  # GPT-2's tokenizer, same as ch02.py
 # Text -> token IDs: [7120, 7002, 4940, 351]
 # The extra [ ] around it makes a batch of 1 card: [[7120, 7002, 4940, 351]], size (1 x 4).
 # The model always expects a batch of cards, even if there's only one.
-in_idx = torch.tensor([tokenizer.encode("Your journey starts with")])
+token_ids = torch.tensor([tokenizer.encode("Your journey starts with")])
 
 # Run the machine on the card.
-# model is an object, but it can be called like a function: model(in_idx) runs forward(in_idx) above.
+# model is an object, but it can be called like a function: model(token_ids) runs forward(token_ids) above.
 # That's built into nn.Module: its __call__ method calls forward.
 # (See __call__ and _call_impl in .venv/lib/python3.12/site-packages/torch/nn/modules/module.py)
 # logits: for each of the 4 words on the card, a score for each of the 50,257 candidates
@@ -114,7 +114,7 @@ in_idx = torch.tensor([tokenizer.encode("Your journey starts with")])
 #   logits[0, 3, 262]  = -0.48   tokenizer.decode([262])  = ' the'
 #   logits[0, 3, 530]  = -0.70   tokenizer.decode([530])  = ' one'
 #   logits[0, 3, 6549] =  2.62   tokenizer.decode([6549]) = ' surve'   <- biggest of all 50,257
-logits = model(in_idx)  # (1 card x 4 tokens x 50,257)
+logits = model(token_ids)  # (1 card x 4 tokens x 50,257)
 print("Output size:", tuple(logits.shape))
 
 # The guess at each spot = the candidate with the biggest score.
@@ -130,7 +130,7 @@ guesses = logits.argmax(dim=-1)[0]
 #   after 'Your journey' -> guess ' speaks'
 #   after 'Your journey starts' -> guess 'ß'
 #   after 'Your journey starts with' -> guess ' surve'
-card_ids = in_idx[0].tolist()  # the card's token IDs: [7120, 7002, 4940, 351]
+card_ids = token_ids[0].tolist()  # the card's token IDs: [7120, 7002, 4940, 351]
 guess_ids = guesses.tolist()  # the model's guesses:  [29817, 9209, 39683, 6549]
 text_so_far = ""
 for spot in range(4):  # spot = 0, 1, 2, 3
