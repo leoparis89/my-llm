@@ -52,13 +52,40 @@ class GPTModel(nn.Module):
         # bias=False: just the dot products, no extra number added afterwards.
         self.out_head = nn.Linear(cfg["emb_dim"], cfg["vocab_size"], bias=False)
 
+    # Example card: "Your journey starts with" -> in_idx = [[7120, 7002, 4940, 351]]
     def forward(self, in_idx):  # in_idx = the token IDs, one row per card
-        batch_size, seq_len = in_idx.shape  # (cards, tokens per card)
-        tok_embeds = self.tok_emb(in_idx)  # each token ID -> its row in the word table
-        pos_embeds = self.pos_emb(torch.arange(seq_len, device=in_idx.device))  # spots 0, 1, 2, 3 -> their rows
-        x = tok_embeds + pos_embeds  # (4 tokens x 3)
+        # How many cards, and how many words per card: here 1 card of 4 words.
+        batch_size, seq_len = in_idx.shape  # batch_size = 1, seq_len = 4
+
+        # Each word's ID -> its row in the word table (3 numbers per word):
+        #   Your    (7120) -> [ 0.67,  0.25, -1.66]
+        #   journey (7002) -> [ 1.05,  0.36, -0.70]
+        #   starts  (4940) -> [ 2.53,  0.34, -0.25]
+        #   with    (351)  -> [ 0.32, -0.85, -1.47]
+        tok_embeds = self.tok_emb(in_idx)
+
+        # Each spot on the card -> its row in the position table (3 numbers per spot).
+        # torch.arange(4) = [0, 1, 2, 3], one number per spot.
+        # (device=... just keeps the numbers on the same chip as in_idx: CPU or GPU.)
+        #   spot 0 -> [-1.99,  0.45, -0.71]
+        #   spot 1 -> [-0.05,  0.03,  0.30]
+        #   spot 2 -> [ 0.36, -0.28, -0.19]
+        #   spot 3 -> [ 1.62, -0.40,  0.04]
+        pos_embeds = self.pos_emb(torch.arange(seq_len, device=in_idx.device))
+
+        # Add them: word numbers + spot numbers, so the same word in another spot gets different numbers.
+        #   Your    [ 0.67,  0.25, -1.66] + spot 0 [-1.99,  0.45, -0.71] = [-1.32,  0.70, -2.37]
+        #   journey [ 1.05,  0.36, -0.70] + spot 1 [-0.05,  0.03,  0.30] = [ 1.00,  0.38, -0.40]
+        #   starts  [ 2.53,  0.34, -0.25] + spot 2 [ 0.36, -0.28, -0.19] = [ 2.89,  0.06, -0.45]
+        #   with    [ 0.32, -0.85, -1.47] + spot 3 [ 1.62, -0.40,  0.04] = [ 1.94, -1.26, -1.43]
+        x = tok_embeds + pos_embeds  # (4 words x 3)
+
         # Attention and the rest of GPT-2 will go here, in later steps.
-        logits = self.out_head(x)  # (4 tokens x 50,257)
+
+        # For each word, a note for each of the 50,257 dictionary words as the next word
+        # (dot product with that word's row in out_head). Example, after "with":
+        #   ' the' -0.48   ' one' -0.70   ' surve' 2.62 (highest)
+        logits = self.out_head(x)  # (4 words x 50,257)
         return logits
 
 
