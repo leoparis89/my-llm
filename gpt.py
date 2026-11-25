@@ -151,13 +151,6 @@ token_ids = torch.tensor([tokenizer.encode("Your journey starts with")])
 logits = model(token_ids)  # (1 card x 4 tokens x 50,257)
 print("Output size:", tuple(logits.shape))
 
-# The guess at each spot = the candidate with the biggest score.
-# argmax gives the POSITION of the biggest score (not the score itself) = that candidate's token ID.
-#   after "with": biggest score is 2.62, at position 6549 -> guess = 6549 = ' surve'
-# dim=-1 means "look along the last size" (the 50,257), so we get one ID per word.
-# Like token_ids, it's a grid with one row per card. We have 1 card, so 1 row:
-#   guesses = [[29817, 9209, 39683, 6549]] = ['VIS', ' speaks', 'ß', ' surve']
-guesses = logits.argmax(dim=-1)
 
 
 # Write text: guess the next word, add it to the end, repeat.
@@ -167,7 +160,7 @@ guesses = logits.argmax(dim=-1)
 #   round 3: "starts with surve Sta"      -> ' Fri'
 #   round 4: "with surve Sta Fri"         -> ' speaks'
 #   round 5: "surve Sta Fri speaks"       -> ' surve'
-length_of_dance = 5  # how many words to add
+length_of_dance = 20  # how many words to add
 
 result = token_ids  # the text so far, as a grid of 1 row: [[7120, 7002, 4940, 351]]
 
