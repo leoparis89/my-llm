@@ -149,8 +149,8 @@ token_ids = torch.tensor([tokenizer.encode("Your journey starts with")])
 result = token_ids  # the text so far, as a grid of 1 row: [[7120, 7002, 4940, 351]]
 
 
-def generate_text(model,token_ids, length_of_dance = 20):
-    result = token_ids
+def generate_text(model, starting_token_ids, length_of_dance = 20):
+    result = starting_token_ids
     for _i in range(length_of_dance):
         card = result[:, -4:]
         logits = model(card)
