@@ -110,7 +110,7 @@ def train_step(model, input_card, right_answers_card):
     optimizer.step()
     return loss
 
-amount_of_cards = math.floor(len(all_ids) / GPT_CONFIG_TINY["context_length"])
+amount_of_cards = len(all_ids) - GPT_CONFIG_TINY["context_length"] - 1
 
 
 for _i in range(2):
