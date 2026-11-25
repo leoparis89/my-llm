@@ -137,21 +137,6 @@ tokenizer = tiktoken.get_encoding("gpt2")  # GPT-2's tokenizer, same as ch02.py
 # The model always expects a batch of cards, even if there's only one.
 token_ids = torch.tensor([tokenizer.encode("Your journey starts with")])
 
-# Run the machine on the card.
-# model is an object, but it can be called like a function: model(token_ids) runs forward(token_ids) above.
-# That's built into nn.Module: its __call__ method calls forward.
-# (See __call__ and _call_impl in .venv/lib/python3.12/site-packages/torch/nn/modules/module.py)
-# logits: for each of the 4 words on the card, a score for each of the 50,257 candidates
-# as the next word. Big score = the model thinks that candidate is likely to come next.
-# A score's position in the list of 50,257 is the candidate's token ID, so decode turns it into the word.
-# Example, the scores after "with" (card 0, spot 3):
-#   logits[0, 3, 262]  = -0.48   tokenizer.decode([262])  = ' the'
-#   logits[0, 3, 530]  = -0.70   tokenizer.decode([530])  = ' one'
-#   logits[0, 3, 6549] =  2.62   tokenizer.decode([6549]) = ' surve'   <- biggest of all 50,257
-logits = model(token_ids)  # (1 card x 4 tokens x 50,257)
-print("Output size:", tuple(logits.shape))
-
-
 
 # Write text: guess the next word, add it to the end, repeat.
 # The text grows, but the model only reads the last 4 words each round (the card size):
