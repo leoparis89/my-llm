@@ -123,6 +123,35 @@ class GPTModel(nn.Module):
         return logits
 
 
+# Write text (generation): guess the next word, add it to the end, repeat.
+# This is how ChatGPT writes its answers, one word at a time. (The book calls it generate_text_simple.)
+# The text grows, but the model only reads the last 4 words each round (the card size):
+#   round 1: "Your journey starts with"   -> ' surve'
+#   round 2: "journey starts with surve"  -> ' Sta'
+#   round 3: "starts with surve Sta"      -> ' Fri'
+#   round 4: "with surve Sta Fri"         -> ' speaks'
+#   round 5: "surve Sta Fri speaks"       -> ' surve'
+#
+#   starting_token_ids = the starting text, e.g. [[7120, 7002, 4940, 351]] = "Your journey starts with"
+#   context_size       = biggest card the model can read (4 for GPT_CONFIG_TINY, 1,024 for real GPT-2)
+#   length_of_dance    = how many words to add
+# Returns the starting text with the new words added at the end.
+def generate_text(model, starting_token_ids, context_size, length_of_dance=20):
+    result = starting_token_ids  # the text so far, as a grid of 1 row: [[7120, 7002, 4940, 351]]
+    for _i in range(length_of_dance):
+        # Last 4 IDs of the text (the sliding card). ":" = every card, "-4:" = last 4 IDs.
+        #   round 2: [[7120, 7002, 4940, 351, 6549]] -> [[7002, 4940, 351, 6549]]
+        card = result[:, -context_size:]
+        logits = model(card)  # scores: 1 card x 4 words x 50,257
+        prediction_ids = logits.argmax(dim=-1)  # guess after each word: [[29817, 9209, 39683, 6549]]
+        # Keep only the guess after the last word. "-1:" (with the colon) keeps the brackets: [[6549]]
+        last_prediction_id = prediction_ids[:, -1:]
+        # Add it to the end of the text. dim=1 = along the IDs (dim=0 would add a new card).
+        #   [[7120, 7002, 4940, 351]] + [[6549]] -> [[7120, 7002, 4940, 351, 6549]]
+        result = torch.cat((result, last_prediction_id), dim=1)
+    return result
+
+
 torch.manual_seed(123)  # same random numbers every run
 
 # Create the machine: an object (instance) of the GPTModel class.
