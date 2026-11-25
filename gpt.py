@@ -164,10 +164,29 @@ tokenizer = tiktoken.get_encoding("gpt2")  # GPT-2's tokenizer, same as ch02.py
 # Text -> token IDs: [7120, 7002, 4940, 351]
 # The extra [ ] around it makes a batch of 1 card: [[7120, 7002, 4940, 351]], size (1 x 4).
 # The model always expects a batch of cards, even if there's only one.
-token_ids = torch.tensor([tokenizer.encode("Your journey starts with")])
+token_ids = torch.tensor([tokenizer.encode("Your journey starts with a")])
 
-# Let the model write 20 words after "Your journey starts with".
-result = generate_text(model, token_ids, context_size=GPT_CONFIG_TINY["context_length"])
-print(f"result: {result}")
-result_words = tokenizer.decode(result[0].tolist())
-print(f"result_words: {result_words}")
+
+# How wrong is the model on a card? One number: big = very wrong, close to 0 = right.
+#   card          = [[7120, 7002, 4940, 351]]   "Your journey starts with"
+#   right_answers = [[7002, 4940, 351, 257]]    "journey starts with a"  (the card slid by 1)
+def calc_loss(model, card, right_answers):
+    logits = model(card)  # scores: 1 card x 4 words x 50,257
+    # The loss tool wants a plain list of 4 guesses, without the card brackets, so flatten both:
+    #   logits:        (1 x 4 x 50,257) -> (4 x 50,257)
+    #   right_answers: [[7002, 4940, 351, 257]] -> [7002, 4940, 351, 257]
+    loss = nn.CrossEntropyLoss()(logits.flatten(end_dim=1), right_answers.flatten())
+    return loss
+
+
+# Cut the card and the right answers out of the 5-word text:
+#   text:           Your  journey  starts  with  a     [[7120, 7002, 4940, 351, 257]]
+#   card:           Your  journey  starts  with        words 1-4: [:, :4]
+#   right answers:        journey  starts  with  a     words 2-5: [:, 1:]
+# ":" = every card (we have 1), ":4" = the first 4 IDs, "1:" = everything from the 2nd ID on.
+card = token_ids[:, :4]
+right_answers = token_ids[:, 1:]
+
+loss = calc_loss(model, card, right_answers)
+print(f"loss: {loss.item():.3f}")  # .item() turns the 1-number tensor into a plain number
+
