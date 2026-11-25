@@ -102,9 +102,6 @@ def train_step(model, input_card, right_answers_card):
     return loss
 
 
-
-
-
 input_card = token_ids[:GPT_CONFIG_TINY["context_length"]]
 right_answers_card = token_ids[1:(GPT_CONFIG_TINY["context_length"] + 1)]
 
