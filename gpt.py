@@ -178,8 +178,6 @@ def train_step(model, input_card, right_answers_card):
 input_card = token_ids[:4]
 right_answers_card = token_ids[1:]
 
-for _i in range(10):
-    print(f"input_card: {input_card}")
-    print(f"right_answers_card: {right_answers_card}")
+for _i in range(100):
     loss = train_step(model, input_card, right_answers_card)
     print(f"loss: {loss.item():.3f}")
