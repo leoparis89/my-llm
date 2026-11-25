@@ -40,13 +40,19 @@ class GPTModel(nn.Module):
         self.tok_emb = nn.Embedding(cfg["vocab_size"], cfg["emb_dim"])
         # Position table: (4 x 3), one row of 3 numbers per spot (same as position_layer in ch02.py)
         self.pos_emb = nn.Embedding(cfg["context_length"], cfg["emb_dim"])
-        # Dictionary table for guessing: 3 random numbers for each of the 50,257 dictionary words.
-        #   size (3 x 50,257)
+        # Dictionary table for guessing: one row of 3 random numbers for each of the 50,257 dictionary words.
+        #   size (50,257 x 3)
+        #   row 262   ' the'   [-0.38,  0.23, -0.38]
+        #   row 530   ' one'   [-0.46,  0.49, -0.56]
+        #   row 6549  ' surve' [ 0.58, -0.57, -0.54]
+        #   ... 50,257 rows
+        # These are NOT scores. The scores come out in forward, when a card word is multiplied with each row.
         # It's a separate table from tok_emb above: same size, different numbers, different job.
         #   tok_emb  gives each word ON THE CARD its 3 numbers (at the start)
         #   out_head gives each DICTIONARY WORD 3 numbers, used to score it as the next word (at the end)
         # How it's used is explained in forward, at the logits line.
-        # nn.Linear(3, 50257) creates this table and, when called, does the multiplying for us.
+        # nn.Linear(3, 50257) means "3 numbers in, 50,257 scores out". It creates this (50,257 x 3) table
+        # and, when called, does the multiplying for us.
         # bias=False: just the multiplying, no extra number added afterwards.
         # Training adjusts these numbers so the right next word gets the highest score.
         self.out_head = nn.Linear(cfg["emb_dim"], cfg["vocab_size"], bias=False)
@@ -102,7 +108,8 @@ class GPTModel(nn.Module):
         #   ' the' -0.48   ' one' -0.70   ' surve' 2.62 (highest = the guess)   ...
         # Same for Your, journey and starts -> 50,257 scores each.
         #
-        # Sizes: x (4 words x 3) times out_head (3 x 50,257) -> logits (4 words x 50,257)
+        # Sizes: x (4 words x 3) with out_head (50,257 rows x 3)
+        #        -> each of the 4 words gets a score from each of the 50,257 rows -> logits (4 words x 50,257)
         # (With more cards, the same happens for every card: (cards x 4 words x 50,257).)
         # "logits" is the official name for these scores.
         logits = self.out_head(x)
@@ -162,3 +169,46 @@ for i in range(4):  # i = 0, 1, 2, 3
     word = tokenizer.decode([first_card[i]])  # i = 1: 7002 -> ' journey'
     guess = tokenizer.decode([first_card_guesses[i]])  # i = 1: 9209 -> ' speaks'
     print(f"after '{word}' -> guess '{guess}'")
+
+# Write text: guess the next word, add it to the end, repeat.
+# The text grows, but the model only reads the last 4 words each round (the card size):
+#   round 1: "Your journey starts with"   -> ' surve'
+#   round 2: "journey starts with surve"  -> ' Sta'
+#   round 3: "starts with surve Sta"      -> ' Fri'
+#   round 4: "with surve Sta Fri"         -> ' speaks'
+#   round 5: "surve Sta Fri speaks"       -> ' surve'
+length_of_dance = 5  # how many words to add
+
+result = token_ids  # the text so far, as a grid of 1 row: [[7120, 7002, 4940, 351]]
+
+for i in range(length_of_dance):
+    # Last 4 IDs of the text (the sliding card). ":" = every card, "-4:" = last 4 IDs.
+    #   round 2: [[7120, 7002, 4940, 351, 6549]] -> [[7002, 4940, 351, 6549]]
+    card = result[:, -4:]
+    logits = model(card)  # scores: 1 card x 4 words x 50,257
+    prediction_ids = logits.argmax(dim=-1)  # guess after each word: [[29817, 9209, 39683, 6549]]
+    # Keep only the guess after the last word. "-1:" (with the colon) keeps the brackets: [[6549]]
+    last_prediction_id = prediction_ids[:, -1:]
+    # Add it to the end of the text. dim=1 = along the IDs (dim=0 would add a new card).
+    #   [[7120, 7002, 4940, 351]] + [[6549]] -> [[7120, 7002, 4940, 351, 6549]]
+    result = torch.cat((result, last_prediction_id), dim=1)
+
+    # ids = prediction_ids[0].tolist()   # [[29817, 9209, 39683, 6549]] -> [29817, 9209, 39683, 6549]
+    # for id in ids:
+    #     print(id, tokenizer.decode([id]))   # decode the id to a word
+
+    # print(f"prediction_ids: {prediction_ids}")
+    # print(f"last_prediction_id: {last_prediction_id}")
+    # print(f"current: {card}")
+
+    # print(f"step {i}:")
+
+
+print(f"result: {result}")
+result_words = tokenizer.decode(result[0].tolist())
+print(f"result_words: {result_words}")
+
+
+
+
+
