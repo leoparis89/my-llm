@@ -146,7 +146,6 @@ token_ids = torch.tensor([tokenizer.encode("Your journey starts with")])
 #   round 4: "with surve Sta Fri"         -> ' speaks'
 #   round 5: "surve Sta Fri speaks"       -> ' surve'
 
-result = token_ids  # the text so far, as a grid of 1 row: [[7120, 7002, 4940, 351]]
 
 
 def generate_text(model, starting_token_ids, length_of_dance = 20):
