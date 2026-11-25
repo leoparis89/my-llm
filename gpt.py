@@ -145,38 +145,21 @@ token_ids = torch.tensor([tokenizer.encode("Your journey starts with")])
 #   round 3: "starts with surve Sta"      -> ' Fri'
 #   round 4: "with surve Sta Fri"         -> ' speaks'
 #   round 5: "surve Sta Fri speaks"       -> ' surve'
-length_of_dance = 20  # how many words to add
 
 result = token_ids  # the text so far, as a grid of 1 row: [[7120, 7002, 4940, 351]]
 
-for i in range(length_of_dance):
-    # Last 4 IDs of the text (the sliding card). ":" = every card, "-4:" = last 4 IDs.
-    #   round 2: [[7120, 7002, 4940, 351, 6549]] -> [[7002, 4940, 351, 6549]]
-    card = result[:, -4:]
-    logits = model(card)  # scores: 1 card x 4 words x 50,257
-    prediction_ids = logits.argmax(dim=-1)  # guess after each word: [[29817, 9209, 39683, 6549]]
-    # Keep only the guess after the last word. "-1:" (with the colon) keeps the brackets: [[6549]]
-    last_prediction_id = prediction_ids[:, -1:]
-    # Add it to the end of the text. dim=1 = along the IDs (dim=0 would add a new card).
-    #   [[7120, 7002, 4940, 351]] + [[6549]] -> [[7120, 7002, 4940, 351, 6549]]
-    result = torch.cat((result, last_prediction_id), dim=1)
 
-    # ids = prediction_ids[0].tolist()   # [[29817, 9209, 39683, 6549]] -> [29817, 9209, 39683, 6549]
-    # for id in ids:
-    #     print(id, tokenizer.decode([id]))   # decode the id to a word
+def generate_text(model,token_ids, length_of_dance = 20):
+    result = token_ids
+    for _i in range(length_of_dance):
+        card = result[:, -4:]
+        logits = model(card)
+        prediction_ids = logits.argmax(dim=-1)
+        last_prediction_id = prediction_ids[:, -1:]
+        result = torch.cat((result, last_prediction_id), dim=1)
+    return result
 
-    # print(f"prediction_ids: {prediction_ids}")
-    # print(f"last_prediction_id: {last_prediction_id}")
-    # print(f"current: {card}")
-
-    # print(f"step {i}:")
-
-
+result = generate_text(model, token_ids)
 print(f"result: {result}")
 result_words = tokenizer.decode(result[0].tolist())
 print(f"result_words: {result_words}")
-
-
-
-
-
