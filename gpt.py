@@ -123,3 +123,7 @@ for _i in range(2):
         loss = train_step(model, input_card, right_answers_card)
         print(f"loss: {loss.item():.3f}")
 
+
+generated_text = generate_text(model, input_card, GPT_CONFIG_TINY["context_length"])
+
+print(f"generated_text: {tokenizer.decode(generated_text.tolist())}")
