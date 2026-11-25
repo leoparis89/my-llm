@@ -59,7 +59,7 @@ class GPTModel(nn.Module):
         logits = self.out_head(x)
         return logits
 
-def generate_text(model, starting_token_ids, context_size, length_of_dance=1):
+def generate_text(model, starting_token_ids, context_size, length_of_dance=3):
     result = starting_token_ids  # the text so far: [7120, 7002, 4940, 351]
     for _i in range(length_of_dance):
         # Last 4 IDs of the text (the sliding card). "-4:" = the last 4.
@@ -110,11 +110,8 @@ def train_step(model, input_card, right_answers_card):
     optimizer.step()
     return loss
 
-
-input_card = token_ids[:GPT_CONFIG_TINY["context_length"]]
-right_answers_card = token_ids[1:(GPT_CONFIG_TINY["context_length"] + 1)]
-
 amount_of_cards = math.floor(len(all_ids) / GPT_CONFIG_TINY["context_length"])
+
 
 for _i in range(2):
     for i in range(amount_of_cards):
@@ -124,6 +121,7 @@ for _i in range(2):
         print(f"loss: {loss.item():.3f}")
 
 
-generated_text = generate_text(model, input_card, GPT_CONFIG_TINY["context_length"])
+starting_input_card = token_ids[:GPT_CONFIG_TINY["context_length"]]
+generated_text = generate_text(model, starting_input_card, GPT_CONFIG_TINY["context_length"])
 
 print(f"generated_text: {tokenizer.decode(generated_text.tolist())}")
