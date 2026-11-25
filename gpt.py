@@ -112,6 +112,13 @@ class GPTModel(nn.Module):
         #        -> each of the 4 words gets a score from each of the 50,257 rows -> logits (4 words x 50,257)
         # (With more cards, the same happens for every card: (cards x 4 words x 50,257).)
         # "logits" is the official name for these scores.
+        #
+        # You don't see the multiplying in the line below because it's hidden inside it:
+        # calling self.out_head(x) means "multiply x with my table".
+        # It does NOT just return out_head's random numbers: different x -> different scores.
+        # Written out by hand, it's the same as:
+        #   logits = x @ self.out_head.weight.T
+        #   (self.out_head.weight = the (50,257 x 3) table, .T = flipped, @ = the multiplying)
         logits = self.out_head(x)
         return logits
 
