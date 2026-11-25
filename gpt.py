@@ -9,7 +9,7 @@ import torch.nn as nn
 # Tiny sizes for learning, the same as ch02.py: cards of 4 tokens, 3 numbers per token.
 GPT_CONFIG_TINY = {
     "vocab_size": 50257,  # tokens in GPT-2's list (fixed by the tokenizer, can't shrink)
-    "context_length": 6,  # biggest card: 4 tokens
+    "context_length": 4,  # biggest card: 4 tokens
     "emb_dim": 3,  # numbers per token
     "n_heads": 1,  # attention heads (used later)
     "n_layers": 1,  # blocks stacked on top of each other (used later)
