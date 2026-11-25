@@ -57,16 +57,12 @@ class GPTModel(nn.Module):
         # Training adjusts these numbers so the right next word gets the highest score.
         self.out_head = nn.Linear(cfg["emb_dim"], cfg["vocab_size"], bias=False)
 
-    # token_ids = a grid of token IDs: one row per card, 4 IDs per row. (The book calls it in_idx.)
-    # You can feed 1 card or many cards at once; each row is handled the same way.
-    #   1 card (what we do below):
-    #     [[7120, 7002, 4940, 351]]                "Your journey starts with"
-    #   2 cards (what training will do, with many more):
-    #     [[7120, 7002, 4940, 351],                "Your journey starts with"
-    #      [7002, 4940,  351, 530]]                "journey starts with one"
+    # token_ids = one card: the IDs of up to 4 words. (The book calls it in_idx.)
+    #   [7120, 7002, 4940, 351]   "Your journey starts with"
+    # (The book feeds many cards at once, as a grid. We'll do that later, when training on many cards.)
     def forward(self, token_ids):
-        # How many cards, and how many words per card: here 1 card of 4 words.
-        batch_size, seq_len = token_ids.shape  # batch_size = 1, seq_len = 4
+        # How many words on the card: 4
+        seq_len = len(token_ids)
 
         # Each word's ID -> its row in the word table (3 numbers per word):
         #   Your    (7120) -> [ 0.67,  0.25, -1.66]
@@ -110,7 +106,6 @@ class GPTModel(nn.Module):
         #
         # Sizes: x (4 words x 3) with out_head (50,257 rows x 3)
         #        -> each of the 4 words gets a score from each of the 50,257 rows -> logits (4 words x 50,257)
-        # (With more cards, the same happens for every card: (cards x 4 words x 50,257).)
         # "logits" is the official name for these scores.
         #
         # You don't see the multiplying in the line below because it's hidden inside it:
@@ -132,23 +127,23 @@ class GPTModel(nn.Module):
 #   round 4: "with surve Sta Fri"         -> ' speaks'
 #   round 5: "surve Sta Fri speaks"       -> ' surve'
 #
-#   starting_token_ids = the starting text, e.g. [[7120, 7002, 4940, 351]] = "Your journey starts with"
+#   starting_token_ids = the starting text, e.g. [7120, 7002, 4940, 351] = "Your journey starts with"
 #   context_size       = biggest card the model can read (4 for GPT_CONFIG_TINY, 1,024 for real GPT-2)
 #   length_of_dance    = how many words to add
 # Returns the starting text with the new words added at the end.
 def generate_text(model, starting_token_ids, context_size, length_of_dance=20):
-    result = starting_token_ids  # the text so far, as a grid of 1 row: [[7120, 7002, 4940, 351]]
+    result = starting_token_ids  # the text so far: [7120, 7002, 4940, 351]
     for _i in range(length_of_dance):
-        # Last 4 IDs of the text (the sliding card). ":" = every card, "-4:" = last 4 IDs.
-        #   round 2: [[7120, 7002, 4940, 351, 6549]] -> [[7002, 4940, 351, 6549]]
-        card = result[:, -context_size:]
-        logits = model(card)  # scores: 1 card x 4 words x 50,257
-        prediction_ids = logits.argmax(dim=-1)  # guess after each word: [[29817, 9209, 39683, 6549]]
-        # Keep only the guess after the last word. "-1:" (with the colon) keeps the brackets: [[6549]]
-        last_prediction_id = prediction_ids[:, -1:]
-        # Add it to the end of the text. dim=1 = along the IDs (dim=0 would add a new card).
-        #   [[7120, 7002, 4940, 351]] + [[6549]] -> [[7120, 7002, 4940, 351, 6549]]
-        result = torch.cat((result, last_prediction_id), dim=1)
+        # Last 4 IDs of the text (the sliding card). "-4:" = the last 4.
+        #   round 2: [7120, 7002, 4940, 351, 6549] -> [7002, 4940, 351, 6549]
+        card = result[-context_size:]
+        logits = model(card)  # scores: 4 words x 50,257
+        prediction_ids = logits.argmax(dim=-1)  # guess after each word: [29817, 9209, 39683, 6549]
+        # Keep only the guess after the last word. "-1:" = the last one: [6549]
+        last_prediction_id = prediction_ids[-1:]
+        # Add it to the end of the text.
+        #   [7120, 7002, 4940, 351] + [6549] -> [7120, 7002, 4940, 351, 6549]
+        result = torch.cat((result, last_prediction_id))
     return result
 
 
@@ -161,31 +156,27 @@ model = GPTModel(GPT_CONFIG_TINY)
 
 tokenizer = tiktoken.get_encoding("gpt2")  # GPT-2's tokenizer, same as ch02.py
 
-# Text -> token IDs: [7120, 7002, 4940, 351]
-# The extra [ ] around it makes a batch of 1 card: [[7120, 7002, 4940, 351]], size (1 x 4).
-# The model always expects a batch of cards, even if there's only one.
-token_ids = torch.tensor([tokenizer.encode("Your journey starts with a")])
+# Text -> token IDs: [7120, 7002, 4940, 351, 257]
+token_ids = torch.tensor(tokenizer.encode("Your journey starts with a"))
 
 
 # How wrong is the model on a card? One number: big = very wrong, close to 0 = right.
-#   card          = [[7120, 7002, 4940, 351]]   "Your journey starts with"
-#   right_answers = [[7002, 4940, 351, 257]]    "journey starts with a"  (the card slid by 1)
+#   card          = [7120, 7002, 4940, 351]   "Your journey starts with"
+#   right_answers = [7002, 4940, 351, 257]    "journey starts with a"  (the card slid by 1)
 def calc_loss(model, card, right_answers):
-    logits = model(card)  # scores: 1 card x 4 words x 50,257
-    # The loss tool wants a plain list of 4 guesses, without the card brackets, so flatten both:
-    #   logits:        (1 x 4 x 50,257) -> (4 x 50,257)
-    #   right_answers: [[7002, 4940, 351, 257]] -> [7002, 4940, 351, 257]
-    loss = nn.CrossEntropyLoss()(logits.flatten(end_dim=1), right_answers.flatten())
+    logits = model(card)  # scores: 4 words x 50,257
+    # Compare the 4 guesses' scores with the 4 right answers.
+    loss = nn.CrossEntropyLoss()(logits, right_answers)
     return loss
 
 
 # Cut the card and the right answers out of the 5-word text:
-#   text:           Your  journey  starts  with  a     [[7120, 7002, 4940, 351, 257]]
-#   card:           Your  journey  starts  with        words 1-4: [:, :4]
-#   right answers:        journey  starts  with  a     words 2-5: [:, 1:]
-# ":" = every card (we have 1), ":4" = the first 4 IDs, "1:" = everything from the 2nd ID on.
-card = token_ids[:, :4]
-right_answers = token_ids[:, 1:]
+#   text:           Your  journey  starts  with  a     [7120, 7002, 4940, 351, 257]
+#   card:           Your  journey  starts  with        words 1-4: [:4]
+#   right answers:        journey  starts  with  a     words 2-5: [1:]
+# ":4" = from the start up to position 4 (not included), "1:" = from position 1 to the end.
+card = token_ids[:4]
+right_answers = token_ids[1:]
 
 loss = calc_loss(model, card, right_answers)
 print(f"loss: {loss.item():.3f}")  # .item() turns the 1-number tensor into a plain number
