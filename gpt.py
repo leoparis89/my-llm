@@ -166,28 +166,8 @@ tokenizer = tiktoken.get_encoding("gpt2")  # GPT-2's tokenizer, same as ch02.py
 # The model always expects a batch of cards, even if there's only one.
 token_ids = torch.tensor([tokenizer.encode("Your journey starts with")])
 
-
-# Write text: guess the next word, add it to the end, repeat.
-# The text grows, but the model only reads the last 4 words each round (the card size):
-#   round 1: "Your journey starts with"   -> ' surve'
-#   round 2: "journey starts with surve"  -> ' Sta'
-#   round 3: "starts with surve Sta"      -> ' Fri'
-#   round 4: "with surve Sta Fri"         -> ' speaks'
-#   round 5: "surve Sta Fri speaks"       -> ' surve'
-
-
-
-def generate_text(model, starting_token_ids, length_of_dance = 20):
-    result = starting_token_ids
-    for _i in range(length_of_dance):
-        card = result[:, -4:]
-        logits = model(card)
-        prediction_ids = logits.argmax(dim=-1)
-        last_prediction_id = prediction_ids[:, -1:]
-        result = torch.cat((result, last_prediction_id), dim=1)
-    return result
-
-result = generate_text(model, token_ids)
+# Let the model write 20 words after "Your journey starts with".
+result = generate_text(model, token_ids, context_size=GPT_CONFIG_TINY["context_length"])
 print(f"result: {result}")
 result_words = tokenizer.decode(result[0].tolist())
 print(f"result_words: {result_words}")
