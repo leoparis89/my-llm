@@ -159,25 +159,25 @@ tokenizer = tiktoken.get_encoding("gpt2")  # GPT-2's tokenizer, same as ch02.py
 # Text -> token IDs: [7120, 7002, 4940, 351, 257]
 token_ids = torch.tensor(tokenizer.encode("Your journey starts with a"))
 
-
-# How wrong is the model on a card? One number: big = very wrong, close to 0 = right.
-#   card          = [7120, 7002, 4940, 351]   "Your journey starts with"
-#   right_answers = [7002, 4940, 351, 257]    "journey starts with a"  (the card slid by 1)
-def calc_loss(model, card, right_answers):
-    logits = model(card)  # scores: 4 words x 50,257
+def calc_loss(model, *, input_card, right_answers_card):
+    logits = model(input_card)  # scores: 4 words x 50,257
     # Compare the 4 guesses' scores with the 4 right answers.
-    loss = nn.CrossEntropyLoss()(logits, right_answers)
+    loss = nn.CrossEntropyLoss()(logits, right_answers_card)
     return loss
 
+optimizer = torch.optim.AdamW(model.parameters(), lr=0.1)
 
-# Cut the card and the right answers out of the 5-word text:
-#   text:           Your  journey  starts  with  a     [7120, 7002, 4940, 351, 257]
-#   card:           Your  journey  starts  with        words 1-4: [:4]
-#   right answers:        journey  starts  with  a     words 2-5: [1:]
-# ":4" = from the start up to position 4 (not included), "1:" = from position 1 to the end.
-card = token_ids[:4]
-right_answers = token_ids[1:]
+def train_step(model, input_card, right_answers_card):
+    loss = calc_loss(model, input_card=input_card, right_answers_card=right_answers_card)
+    optimizer.zero_grad()
+    loss.backward()
+    optimizer.step()
+    return loss
 
-loss = calc_loss(model, card, right_answers)
-print(f"loss: {loss.item():.3f}")  # .item() turns the 1-number tensor into a plain number
-
+for _i in range(10):
+    input_card = token_ids[:4]
+    right_answers_card = token_ids[1:]
+    print(f"input_card: {input_card}")
+    print(f"right_answers_card: {right_answers_card}")
+    loss = train_step(model, input_card, right_answers_card)
+    print(f"loss: {loss.item():.3f}")
