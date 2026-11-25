@@ -1,6 +1,7 @@
 import tiktoken
 import torch
 import torch.nn as nn
+import math
 
 # The final machine, built one piece at a time.
 # Names follow the book's final model (chapter 4, GPTModel), so you can look anything up,
@@ -58,7 +59,7 @@ class GPTModel(nn.Module):
         logits = self.out_head(x)
         return logits
 
-def generate_text(model, starting_token_ids, context_size, length_of_dance=20):
+def generate_text(model, starting_token_ids, context_size, length_of_dance=1):
     result = starting_token_ids  # the text so far: [7120, 7002, 4940, 351]
     for _i in range(length_of_dance):
         # Last 4 IDs of the text (the sliding card). "-4:" = the last 4.
@@ -86,6 +87,14 @@ tokenizer = tiktoken.get_encoding("gpt2")  # GPT-2's tokenizer, same as ch02.py
 # Text -> token IDs: [7120, 7002, 4940, 351, 257]
 token_ids = torch.tensor(tokenizer.encode("Your journey starts with a really long sentence"))
 
+# The whole story "The Verdict" (downloaded by ch02.py) -> one long list of token IDs.
+#   "I HAD always thought Jack Gisburn rather a cheap genius..." -> [40, 367, 2885, 1464, 1807, 3619, ...]
+with open("the-verdict.txt", "r", encoding="utf-8") as f:
+    raw_text = f.read()  # the whole story as one string: 20,479 characters
+all_ids = torch.tensor(tokenizer.encode(raw_text))  # 5,145 token IDs
+print("Story length:", len(all_ids), "token IDs")
+print("First 10:", all_ids[:10].tolist(), "=", repr(tokenizer.decode(all_ids[:10].tolist())))
+
 def calc_loss(model, *, input_card, right_answers_card):
     logits = model(input_card)  # scores: 4 words x 50,257
     # Compare the 4 guesses' scores with the 4 right answers.
@@ -105,6 +114,12 @@ def train_step(model, input_card, right_answers_card):
 input_card = token_ids[:GPT_CONFIG_TINY["context_length"]]
 right_answers_card = token_ids[1:(GPT_CONFIG_TINY["context_length"] + 1)]
 
-for _i in range(100):
-    loss = train_step(model, input_card, right_answers_card)
-    print(f"loss: {loss.item():.3f}")
+amount_of_cards = math.floor(len(all_ids) / GPT_CONFIG_TINY["context_length"])
+
+for _i in range(2):
+    for i in range(amount_of_cards):
+        input_card = all_ids[i:i+GPT_CONFIG_TINY["context_length"]]
+        right_answers_card = all_ids[i+1:i+GPT_CONFIG_TINY["context_length"]+1]
+        loss = train_step(model, input_card, right_answers_card)
+        print(f"loss: {loss.item():.3f}")
+
