@@ -174,9 +174,11 @@ def train_step(model, input_card, right_answers_card):
     optimizer.step()
     return loss
 
+
+input_card = token_ids[:4]
+right_answers_card = token_ids[1:]
+
 for _i in range(10):
-    input_card = token_ids[:4]
-    right_answers_card = token_ids[1:]
     print(f"input_card: {input_card}")
     print(f"right_answers_card: {right_answers_card}")
     loss = train_step(model, input_card, right_answers_card)
