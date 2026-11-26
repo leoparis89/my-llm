@@ -92,8 +92,6 @@ token_ids = torch.tensor(tokenizer.encode("Your journey starts with a really lon
 with open("the-verdict.txt", "r", encoding="utf-8") as f:
     raw_text = f.read()  # the whole story as one string: 20,479 characters
 all_ids = torch.tensor(tokenizer.encode(raw_text))  # 5,145 token IDs
-print("Story length:", len(all_ids), "token IDs")
-print("First 10:", all_ids[:10].tolist(), "=", repr(tokenizer.decode(all_ids[:10].tolist())))
 
 def calc_loss(model, *, input_card, right_answers_card):
     logits = model(input_card)  # scores: 4 words x 50,257
@@ -101,7 +99,7 @@ def calc_loss(model, *, input_card, right_answers_card):
     loss = nn.CrossEntropyLoss()(logits, right_answers_card)
     return loss
 
-optimizer = torch.optim.AdamW(model.parameters(), lr=0.1)
+optimizer = torch.optim.AdamW(model.parameters(), lr=0.01)
 
 def train_step(model, input_card, right_answers_card):
     loss = calc_loss(model, input_card=input_card, right_answers_card=right_answers_card)
@@ -110,7 +108,7 @@ def train_step(model, input_card, right_answers_card):
     optimizer.step()
     return loss
 
-amount_of_cards = len(all_ids) - GPT_CONFIG_TINY["context_length"] - 1
+amount_of_cards = len(all_ids) - GPT_CONFIG_TINY["context_length"] 
 
 
 for _i in range(2):
