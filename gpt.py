@@ -116,10 +116,10 @@ for _i in range(2):
         input_card = all_ids[i:i+GPT_CONFIG_TINY["context_length"]]
         right_answers_card = all_ids[i+1:i+GPT_CONFIG_TINY["context_length"]+1]
         loss = train_step(model, input_card, right_answers_card)
-        print(f"loss: {loss.item():.3f}")
 
 
 starting_input_card = token_ids[:GPT_CONFIG_TINY["context_length"]]
-generated_text = generate_text(model, starting_input_card, GPT_CONFIG_TINY["context_length"], 100)
+generated_text = generate_text(model, starting_input_card, GPT_CONFIG_TINY["context_length"], 29)
 
 print(f"generated_text: {tokenizer.decode(generated_text.tolist())}")
+print(f"*** end of text ***")
