@@ -59,7 +59,7 @@ class GPTModel(nn.Module):
         logits = self.out_head(x)
         return logits
 
-def generate_text(model, starting_token_ids, context_size, length_of_dance=3):
+def generate_text(model, starting_token_ids, context_size, length_of_dance):
     result = starting_token_ids  # the text so far: [7120, 7002, 4940, 351]
     for _i in range(length_of_dance):
         # Last 4 IDs of the text (the sliding card). "-4:" = the last 4.
@@ -120,6 +120,6 @@ for _i in range(2):
 
 
 starting_input_card = token_ids[:GPT_CONFIG_TINY["context_length"]]
-generated_text = generate_text(model, starting_input_card, GPT_CONFIG_TINY["context_length"])
+generated_text = generate_text(model, starting_input_card, GPT_CONFIG_TINY["context_length"], 100)
 
 print(f"generated_text: {tokenizer.decode(generated_text.tolist())}")
