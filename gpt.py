@@ -1,7 +1,6 @@
 import tiktoken
 import torch
 import torch.nn as nn
-import math
 
 # The final machine, built one piece at a time.
 # Names follow the book's final model (chapter 4, GPTModel), so you can look anything up,
